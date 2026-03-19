@@ -23,7 +23,7 @@ The app runs at `http://localhost:5173`.
 Create a `.env` file from `.env.example` if you want to point the frontend at a deployed backend:
 
 ```text
-VITE_API_URL=https://your-backend.railway.app
+VITE_API_URL=https://your-backend.onrender.com
 ```
 
 If `VITE_API_URL` is not set, the frontend uses `http://localhost:8000`.

@@ -31,8 +31,9 @@ Repo delivery state:
 
 - current branch: `main`
 - git repo exists
-- no git remote is configured yet
-- the worktree is still entirely untracked, so the project has not had its first real commit/push yet
+- GitHub remote is configured
+- repo has been pushed to GitHub
+- GitHub Actions CI is active on GitHub and has already passed on a recent commit
 
 Environment limitation noted during verification:
 
@@ -102,19 +103,9 @@ This is the important part: the remaining work is no longer "build the whole pro
 
 ### A. Immediate delivery blockers
 
-These should be done first because they affect everything else.
+These should be done first because they affect live delivery.
 
-1. Create the first real git history
-- run `git add .`
-- make the first commit
-- create a GitHub repo if you have not already
-- add a remote
-- push to GitHub
-
-2. Turn CI from "present in files" into "actually active"
-- right now `.github/workflows/ci.yml` exists, but without a remote push it is not doing real work yet
-
-3. Validate Docker for real
+1. Validate Docker for real
 - install Docker Desktop or Docker Engine
 - run `docker compose up --build`
 - verify backend + Redis actually start
@@ -258,16 +249,15 @@ These matter a lot for getting interviews.
 
 If the goal is job readiness, this is the order I recommend now:
 
-1. Commit everything and push to GitHub
-2. Install Docker and verify `docker compose`
-3. Deploy backend
-4. Deploy frontend
-5. Add one real public demo URL and screenshot proof
-6. Upgrade prediction from "sample index" to "real user input"
-7. Surface INT8 quantisation results in the frontend
-8. Add auto-deploy in GitHub Actions
-9. Add DVC
-10. Add auth and per-user isolation
+1. Install Docker and verify `docker compose`
+2. Deploy backend
+3. Deploy frontend
+4. Add one real public demo URL and screenshot proof
+5. Upgrade prediction from "sample index" to "real user input"
+6. Surface INT8 quantisation results in the frontend
+7. Add auto-deploy in GitHub Actions
+8. Add DVC
+9. Add auth and per-user isolation
 
 ## Suggested Definition Of "Good Enough To Apply"
 
