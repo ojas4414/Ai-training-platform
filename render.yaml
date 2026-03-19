@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ai-training-platform-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
+      - key: RELOAD
+        value: "false"
+      - key: MLFLOW_TRACKING_URI
+        value: mlruns
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      - key: CORS_ALLOW_CREDENTIALS
+        value: "false"
