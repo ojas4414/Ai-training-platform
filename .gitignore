@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.pyc
+*.pyo
+.env
+
+# MLflow
+mlruns/
+
+# Data & models (large binaries)
+data/
+models/*.pth
+models/onnx/
+models/quantised/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.log
+*.tmp
+results/*.json
+
+# Tests
+.pytest_cache/
+.coverage
+.test-workspaces/
+.pytest-*/
+pytest-cache-files-*/
+test-tmp-*/

@@ -1,0 +1,15 @@
+model: simple_nn
+dataset: mnist
+
+# Training hyperparameters
+learning_rate: 0.001
+batch_size: 64
+epochs: 10
+optimizer: adam   # adam | sgd
+
+# Paths
+checkpoint_dir: models/
+results_dir: results/
+
+# MLflow
+mlflow_experiment: ai-training-platform

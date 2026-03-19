@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    depends_on:
+      - redis
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - ./results:/app/results
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./mlruns:/app/mlruns
+    environment:
+      PYTHONUNBUFFERED: "1"
+      APP_HOST: "${APP_HOST:-0.0.0.0}"
+      PORT: "${PORT:-8000}"
+      RELOAD: "${RELOAD:-false}"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-mlruns}"
+      REDIS_URL: "${REDIS_URL:-redis://redis:6379/0}"
+      CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
+      CORS_ALLOW_CREDENTIALS: "${CORS_ALLOW_CREDENTIALS:-false}"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
