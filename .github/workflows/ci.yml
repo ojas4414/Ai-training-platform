@@ -7,6 +7,8 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
 
     steps:
       - name: Check out repository
@@ -33,7 +35,7 @@ jobs:
         run: python -m compileall backend scripts
 
       - name: Run backend tests
-        run: pytest
+        run: python -m pytest -q -p no:cacheprovider
 
       - name: Install frontend dependencies
         working-directory: frontend
