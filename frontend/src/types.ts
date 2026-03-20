@@ -1,4 +1,3 @@
-// src/types.ts
 export interface ManualExperiment {
   learning_rate: number;
   batch_size: number;
@@ -25,6 +24,8 @@ export interface HpoResult {
   all_trials: HpoTrial[];
   n_jobs?: number;
   execution_mode?: 'parallel' | 'sequential';
+  dataset_name?: string;
+  dataset_kind?: string;
 }
 
 export interface ExperimentsResponse {
@@ -34,18 +35,77 @@ export interface ExperimentsResponse {
 
 export interface MlflowRun {
   run_id: string;
-  run_name: string;
+  run_name: string | null;
   experiment: string;
   status: string;
-  start_time: number;
+  start_time: number | null;
   params: Record<string, string>;
   metrics: Record<string, number>;
+}
+
+export interface MlflowRunsResponse {
+  runs: MlflowRun[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+export type JobKind = 'train' | 'hpo' | 'analyse' | 'export';
+
+export type JobState = 'queued' | 'running' | 'completed' | 'failed';
+
+export interface JobStatus<T = Record<string, unknown>> {
+  job_id: string;
+  kind: JobKind;
+  status: JobState;
+  message: string;
+  progress?: number | null;
+  created_at: number;
+  updated_at: number;
+  started_at?: number | null;
+  completed_at?: number | null;
+  error?: string | null;
+  result?: T | null;
+}
+
+export interface HealthResponse {
+  status: string;
+  mlflow_tracking_uri: string;
+  device: string;
 }
 
 export interface ModelFile {
   filename: string;
   size_mb: number;
   modified: number;
+}
+
+export interface DatasetPreview {
+  kind: string;
+  summary: string;
+  columns?: string[] | null;
+  sample_rows?: Array<Record<string, unknown>> | null;
+  entries?: string[] | null;
+  file_count?: number | null;
+}
+
+export interface DatasetFile {
+  filename: string;
+  extension: string;
+  size_mb: number;
+  modified: number;
+  preview?: DatasetPreview | null;
+}
+
+export interface ModelUploadResponse {
+  message: string;
+  model: ModelFile;
+}
+
+export interface DatasetUploadResponse {
+  message: string;
+  dataset: DatasetFile;
 }
 
 export interface OnnxComparison {
@@ -107,11 +167,19 @@ export interface TrainRequest {
   epochs: number;
   optimizer: 'adam' | 'sgd';
   experiment_name: string;
+  dataset_name?: string;
 }
 
 export interface TrainResponse {
   best_val_accuracy: number;
   run_name: string;
   checkpoint_path: string;
-  history: { train_loss: number[]; train_accuracy: number[]; val_loss: number[]; val_accuracy: number[] };
+  dataset_name?: string;
+  dataset_kind?: string;
+  history: {
+    train_loss: number[];
+    train_accuracy: number[];
+    val_loss: number[];
+    val_accuracy: number[];
+  };
 }

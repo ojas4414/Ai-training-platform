@@ -1,0 +1,59 @@
+/* CustomCursor.module.css */
+
+.cursorOuter {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(216, 179, 106, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  backdrop-filter: blur(0.5px);
+  box-sizing: border-box;
+}
+
+.magnetic {
+  border-width: 1.5px;
+  background: rgba(216, 179, 106, 0.05);
+  box-shadow: 0 0 15px rgba(216, 179, 106, 0.1);
+}
+
+.cursorInner {
+  position: fixed;
+  width: 4px;
+  height: 4px;
+  background: #d8b36a;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10000;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 8px rgba(216, 179, 106, 0.8);
+}
+
+.trailParticle {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #d8b36a 0%, rgba(216, 179, 106, 0.5) 70%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  top: 0;
+  left: 0;
+}
+
+/* Disable cursor on mobile */
+@media (max-width: 768px) {
+  .cursorOuter,
+  .cursorInner,
+  .trailParticle {
+    display: none;
+  }
+
+  * {
+    cursor: auto !important;
+  }
+}

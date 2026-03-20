@@ -11,6 +11,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
+      external: ['react-is'],
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) {

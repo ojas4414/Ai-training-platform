@@ -1,0 +1,247 @@
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 40px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  font-size: 32px;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.header p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section h3 {
+  font-size: 20px;
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* CARD GRID */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.cardIcon {
+  font-size: 32px;
+}
+
+.cardContent h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cardContent p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cardButton {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cardButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px var(--glow-accent);
+}
+
+/* STAT RINGS */
+.ringGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  justify-items: center;
+}
+
+/* BUTTON GRID */
+.buttonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+}
+
+.buttonColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.buttonColumn h4 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* LOADING DEMO */
+.loadingDemo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+}
+
+.loadingColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.loadingColumn h4 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* TRANSITION DEMO */
+.transitionDemo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.animatedBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px var(--glow-accent);
+  user-select: none;
+}
+
+/* NOTICE */
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notice h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.notice p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .showcase {
+    gap: 24px;
+    padding: 24px 16px;
+  }
+
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .section h3 {
+    font-size: 18px;
+  }
+
+  .cardGrid,
+  .ringGrid,
+  .buttonGrid,
+  .loadingDemo {
+    grid-template-columns: 1fr;
+  }
+
+  .ringGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .showcase {
+    gap: 16px;
+    padding: 16px 12px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .section h3 {
+    font-size: 16px;
+  }
+}

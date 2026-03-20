@@ -1,6 +1,7 @@
 import torch
 from fastapi.testclient import TestClient
 
+from backend.api import main
 from backend.api.main import app
 from backend.ml.train_mnist import SimpleNN
 
@@ -69,3 +70,44 @@ def test_predict_endpoint_returns_404_for_missing_checkpoint(monkeypatch, worksp
         )
 
     assert response.status_code == 404
+
+
+def test_predict_endpoint_reuses_cached_model_and_dataset(monkeypatch, workspace_tmp_path):
+    monkeypatch.chdir(workspace_tmp_path)
+
+    dataset_inits = {"count": 0}
+
+    class CountingMnistDataset(FakeMnistDataset):
+        def __init__(self, *args, **kwargs):
+            dataset_inits["count"] += 1
+            super().__init__(*args, **kwargs)
+
+    original_torch_load = torch.load
+    torch_load_calls = {"count": 0}
+
+    def counted_torch_load(*args, **kwargs):
+        torch_load_calls["count"] += 1
+        return original_torch_load(*args, **kwargs)
+
+    monkeypatch.setattr("torchvision.datasets.MNIST", CountingMnistDataset)
+    monkeypatch.setattr(main.torch, "load", counted_torch_load)
+
+    models_dir = workspace_tmp_path / "models"
+    models_dir.mkdir()
+    checkpoint_path = models_dir / "cached_model.pth"
+    create_constant_prediction_checkpoint(checkpoint_path, predicted_label=3)
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/predict/cached_model.pth",
+            json={"sample_index": 1, "split": "test", "top_k": 3},
+        )
+        second = client.post(
+            "/predict/cached_model.pth",
+            json={"sample_index": 1, "split": "test", "top_k": 3},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert dataset_inits["count"] == 1
+    assert torch_load_calls["count"] == 1

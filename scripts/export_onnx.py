@@ -1,41 +1,44 @@
 """
-export_onnx.py — Export a trained PyTorch model to ONNX format.
-Benchmarks size and inference latency for .pth, .onnx, and INT8-quantised.
+export_onnx.py - Export a trained PyTorch model to ONNX format.
+Benchmarks size and inference latency for .pth, .onnx, and INT8-quantised models.
 """
+
 import json
-import time
 import sys
+import time
 from pathlib import Path
 
-import torch
 import numpy as np
+import torch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from backend.ml.model_factory import build_model_from_checkpoint
 
-def benchmark_onnx(onnx_path: str, input_shape=(1, 1, 28, 28), n_runs: int = 200) -> float:
+
+def benchmark_onnx(onnx_path: str, input_shape=(1, 28, 28), n_runs: int = 50) -> float:
     try:
         import onnxruntime as ort
-        sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-        dummy = np.random.randn(*input_shape).astype(np.float32)
-        input_name = sess.get_inputs()[0].name
 
-        # Warm up
+        session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+        dummy = np.random.randn(1, *input_shape).astype(np.float32)
+        input_name = session.get_inputs()[0].name
+
         for _ in range(10):
-            sess.run(None, {input_name: dummy})
+            session.run(None, {input_name: dummy})
 
         start = time.perf_counter()
         for _ in range(n_runs):
-            sess.run(None, {input_name: dummy})
+            session.run(None, {input_name: dummy})
         elapsed = time.perf_counter() - start
         return round((elapsed / n_runs) * 1000, 4)
-    except Exception as e:
+    except Exception:
         return -1.0
 
 
-def benchmark_pytorch(model: torch.nn.Module, input_shape=(1, 1, 28, 28), n_runs: int = 200) -> float:
+def benchmark_pytorch(model: torch.nn.Module, input_shape=(1, 28, 28), n_runs: int = 50) -> float:
     model.eval()
-    dummy = torch.randn(*input_shape)
+    dummy = torch.randn(1, *input_shape)
 
     with torch.no_grad():
         for _ in range(10):
@@ -52,14 +55,10 @@ def benchmark_pytorch(model: torch.nn.Module, input_shape=(1, 1, 28, 28), n_runs
 def quantise_and_benchmark(
     model: torch.nn.Module,
     checkpoint_path: str,
-    input_shape: tuple = (1, 1, 28, 28),
+    input_shape: tuple = (1, 28, 28),
     output_dir: str = "models/quantised",
-    n_runs: int = 200,
+    n_runs: int = 50,
 ) -> dict:
-    """
-    Apply INT8 dynamic quantisation, save the quantised model,
-    and benchmark inference latency.
-    """
     import torch.quantization
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -70,13 +69,11 @@ def quantise_and_benchmark(
     )
     quantised_model.eval()
 
-    # Save quantised state
     quantised_path = str(Path(output_dir) / f"{stem}_int8.pth")
     torch.save(quantised_model.state_dict(), quantised_path)
     file_size_mb = round(Path(quantised_path).stat().st_size / (1024 * 1024), 4)
 
-    # Benchmark
-    dummy = torch.randn(*input_shape)
+    dummy = torch.randn(1, *input_shape)
     with torch.no_grad():
         for _ in range(10):
             _ = quantised_model(dummy)
@@ -96,27 +93,23 @@ def quantise_and_benchmark(
     }
 
 
-def export_model(checkpoint_path: str, output_dir: str = "models/onnx") -> dict:
-    """
-    Load a .pth checkpoint, export to ONNX, and return comparison metrics.
-    """
-    from backend.ml.train_mnist import SimpleNN
-
+def export_model(checkpoint_path: str, output_dir: str = "models/onnx", progress_callback=None) -> dict:
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Load model
+    if progress_callback is not None:
+        progress_callback(progress=5.0, message="Loading checkpoint from disk")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    model = SimpleNN()
+    model, _, input_shape = build_model_from_checkpoint(checkpoint)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
     model.eval()
 
-    # ONNX export path
     stem = Path(checkpoint_path).stem
     onnx_path = str(Path(output_dir) / f"{stem}.onnx")
 
-    # Export
-    dummy_input = torch.randn(1, 1, 28, 28)
+    dummy_input = torch.randn(1, *input_shape)
+    if progress_callback is not None:
+        progress_callback(progress=20.0, message="Exporting ONNX artifact")
     torch.onnx.export(
         model,
         dummy_input,
@@ -127,15 +120,18 @@ def export_model(checkpoint_path: str, output_dir: str = "models/onnx") -> dict:
         input_names=["input"],
         output_names=["output"],
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        dynamo=False,
     )
 
-    # Size comparison
     pth_size_mb = round(Path(checkpoint_path).stat().st_size / (1024 * 1024), 4)
     onnx_size_mb = round(Path(onnx_path).stat().st_size / (1024 * 1024), 4)
 
-    # Latency comparison
-    pth_latency_ms = benchmark_pytorch(model)
-    onnx_latency_ms = benchmark_onnx(onnx_path)
+    if progress_callback is not None:
+        progress_callback(progress=45.0, message="Benchmarking PyTorch artifact")
+    pth_latency_ms = benchmark_pytorch(model, input_shape=input_shape)
+    if progress_callback is not None:
+        progress_callback(progress=65.0, message="Benchmarking ONNX artifact")
+    onnx_latency_ms = benchmark_onnx(onnx_path, input_shape=input_shape)
 
     size_reduction_pct = round((1 - onnx_size_mb / pth_size_mb) * 100, 2) if pth_size_mb > 0 else 0
     latency_speedup = round(pth_latency_ms / onnx_latency_ms, 2) if onnx_latency_ms > 0 else 0
@@ -159,9 +155,10 @@ def export_model(checkpoint_path: str, output_dir: str = "models/onnx") -> dict:
         },
     }
 
-    # --- INT8 dynamic quantisation ---
     try:
-        quant_result = quantise_and_benchmark(model, checkpoint_path, output_dir=output_dir)
+        if progress_callback is not None:
+            progress_callback(progress=82.0, message="Benchmarking INT8 quantised artifact")
+        quant_result = quantise_and_benchmark(model, checkpoint_path, input_shape=input_shape, output_dir=output_dir)
         result["quantised"] = quant_result
         fp32_size = pth_size_mb
         int8_size = quant_result["file_size_mb"]
@@ -176,28 +173,20 @@ def export_model(checkpoint_path: str, output_dir: str = "models/onnx") -> dict:
         result["quantised"] = None
         result["quantised_error"] = str(exc)
 
-    # Save report
     report_path = f"results/onnx_export_{stem}.json"
-    with open(report_path, "w") as f:
-        json.dump(result, f, indent=2)
-
-    print(f"\n{'='*55}")
-    print(f"EXPORT COMPLETE")
-    print(f"  FP32 (.pth):    {pth_size_mb} MB | {pth_latency_ms} ms")
-    print(f"  ONNX (.onnx):   {onnx_size_mb} MB | {onnx_latency_ms} ms")
-    if result.get("quantised"):
-        q = result["quantised"]
-        print(f"  INT8 (quant):   {q['file_size_mb']} MB | {q['inference_latency_ms']} ms")
-    print(f"  ONNX size reduction:  {size_reduction_pct}%")
-    print(f"  ONNX latency speedup: {latency_speedup}x")
-    print(f"{'='*55}")
+    if progress_callback is not None:
+        progress_callback(progress=94.0, message="Saving export report")
+    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, "w") as handle:
+        json.dump(result, handle, indent=2)
 
     return result
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="Path to .pth file")
-    args = parser.parse_args()
-    export_model(args.checkpoint)
+    arguments = parser.parse_args()
+    export_model(arguments.checkpoint)

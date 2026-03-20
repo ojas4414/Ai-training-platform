@@ -27,9 +27,16 @@ class TrainEngine:
 
         self.model = model.to(self.device)
 
+        if len(train_dataset) < 2:
+            raise ValueError("Training dataset must contain at least 2 samples")
+
         # Split dataset into train / validation (80/20)
-        val_size = int(0.2 * len(train_dataset))
+        val_size = max(1, int(0.2 * len(train_dataset)))
         train_size = len(train_dataset) - val_size
+        if train_size < 1:
+            train_size = len(train_dataset) - 1
+            val_size = 1
+
         train_subset, val_subset = random_split(
             train_dataset, [train_size, val_size],
             generator=torch.Generator().manual_seed(42)
@@ -108,8 +115,15 @@ class TrainEngine:
     # Public API
     # ------------------------------------------------------------------
 
-    def train(self, experiment_name: str = "default", run_name: str = None,
-              checkpoint_path: str = None, trial=None):
+    def train(
+        self,
+        experiment_name: str = "default",
+        run_name: str = None,
+        checkpoint_path: str = None,
+        trial=None,
+        checkpoint_metadata: dict | None = None,
+        progress_callback=None,
+    ):
         """
         Run the full training loop.
 
@@ -131,6 +145,7 @@ class TrainEngine:
                 "batch_size": self.config["batch_size"],
                 "epochs": self.epochs,
                 "optimizer": self.config.get("optimizer", "adam"),
+                "dataset_name": self.config.get("dataset_name", "mnist"),
                 "device": str(self.device),
             })
 
@@ -165,6 +180,16 @@ class TrainEngine:
                     f"Val Loss: {val_loss:.4f} Acc: {val_acc:.2f}%"
                 )
 
+                if progress_callback is not None:
+                    progress_callback(
+                        epoch=epoch,
+                        total_epochs=self.epochs,
+                        train_loss=train_loss,
+                        train_accuracy=train_acc,
+                        val_loss=val_loss,
+                        val_accuracy=val_acc,
+                    )
+
                 # Track best model
                 if val_acc > best_val_accuracy:
                     best_val_accuracy = val_acc
@@ -188,6 +213,7 @@ class TrainEngine:
                         "config": self.config,
                         "best_val_accuracy": best_val_accuracy,
                         "history": self.history,
+                        "checkpoint_metadata": checkpoint_metadata or {},
                     },
                     checkpoint_path,
                 )

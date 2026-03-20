@@ -1,24 +1,28 @@
 """
-analyse_model.py — Model Architecture Analyser.
-Loads any .pth checkpoint, prints a full layer-by-layer summary,
-and saves the analysis as a structured JSON file.
+analyse_model.py - Model Architecture Analyser.
+Loads a checkpoint, reconstructs the model, and saves a structured summary.
 """
-import json
-import time
+
 import argparse
+import io
+import json
 import sys
+import time
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import torch
 import torch.nn as nn
 from torchsummary import summary as torch_summary
-import io
-from contextlib import redirect_stdout
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from backend.ml.model_factory import build_model_from_checkpoint
 
 
 def _count_parameters(model: nn.Module):
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(parameter.numel() for parameter in model.parameters())
+    trainable = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
     return total, trainable
 
 
@@ -27,36 +31,39 @@ def _get_layer_info(model: nn.Module):
     for name, module in model.named_modules():
         if name == "":
             continue
+
         layer_info = {
             "name": name,
             "type": module.__class__.__name__,
-            "params": sum(p.numel() for p in module.parameters(recurse=False)),
+            "params": sum(parameter.numel() for parameter in module.parameters(recurse=False)),
             "trainable_params": sum(
-                p.numel() for p in module.parameters(recurse=False) if p.requires_grad
+                parameter.numel() for parameter in module.parameters(recurse=False) if parameter.requires_grad
             ),
         }
-        # Add shape info for linear and conv layers
+
         if isinstance(module, nn.Linear):
             layer_info["in_features"] = module.in_features
             layer_info["out_features"] = module.out_features
         elif isinstance(module, (nn.Conv2d, nn.Conv1d)):
             layer_info["in_channels"] = module.in_channels
             layer_info["out_channels"] = module.out_channels
-            layer_info["kernel_size"] = list(module.kernel_size) if hasattr(module.kernel_size, '__iter__') else module.kernel_size
+            layer_info["kernel_size"] = (
+                list(module.kernel_size) if hasattr(module.kernel_size, "__iter__") else module.kernel_size
+            )
+
         layers.append(layer_info)
+
     return layers
 
 
-def _benchmark_inference(model: nn.Module, input_shape: tuple, device: torch.device, n_runs: int = 200):
+def _benchmark_inference(model: nn.Module, input_shape: tuple, device: torch.device, n_runs: int = 50):
     model.eval()
     dummy = torch.randn(1, *input_shape).to(device)
 
-    # Warm up
     with torch.no_grad():
         for _ in range(10):
             _ = model(dummy)
 
-    # Benchmark
     if device.type == "cuda":
         torch.cuda.synchronize()
     start = time.perf_counter()
@@ -65,51 +72,43 @@ def _benchmark_inference(model: nn.Module, input_shape: tuple, device: torch.dev
             _ = model(dummy)
     if device.type == "cuda":
         torch.cuda.synchronize()
-    elapsed = time.perf_counter() - start
 
-    avg_ms = (elapsed / n_runs) * 1000
-    return round(avg_ms, 4)
+    elapsed = time.perf_counter() - start
+    return round((elapsed / n_runs) * 1000, 4)
 
 
 def analyse_model(
     model: nn.Module,
     input_shape: tuple = (1, 28, 28),
-    checkpoint_path: str = None,
-    output_json: str = None,
+    checkpoint_path: str | None = None,
+    output_json: str | None = None,
     device_str: str = "cpu",
+    progress_callback=None,
 ) -> dict:
-    """
-    Analyse a PyTorch model and return a structured dictionary.
-
-    Args:
-        model: An nn.Module instance (already instantiated).
-        input_shape: Input tensor shape (C, H, W) or (features,).
-        checkpoint_path: Path to .pth file for file size measurement.
-        output_json: If provided, saves analysis to this JSON path.
-        device_str: "cpu" or "cuda".
-
-    Returns:
-        dict with keys: model_class, total_params, trainable_params, layers,
-                        inference_latency_ms, file_size_mb, input_shape, torchsummary
-    """
     device = torch.device(device_str if torch.cuda.is_available() or device_str == "cpu" else "cpu")
     model = model.to(device)
     model.eval()
 
+    if progress_callback is not None:
+        progress_callback(progress=10.0, message="Counting model parameters")
     total_params, trainable_params = _count_parameters(model)
+    if progress_callback is not None:
+        progress_callback(progress=30.0, message="Collecting layer metadata")
     layers = _get_layer_info(model)
+    if progress_callback is not None:
+        progress_callback(progress=55.0, message="Benchmarking inference latency")
     latency_ms = _benchmark_inference(model, input_shape, device)
 
-    # Capture torchsummary output
-    f = io.StringIO()
+    summary_buffer = io.StringIO()
     try:
-        with redirect_stdout(f):
+        if progress_callback is not None:
+            progress_callback(progress=75.0, message="Generating torchsummary report")
+        with redirect_stdout(summary_buffer):
             torch_summary(model, input_shape, device=device_str)
-        summary_text = f.getvalue()
-    except Exception as e:
-        summary_text = f"Could not generate torchsummary: {e}"
+        summary_text = summary_buffer.getvalue()
+    except Exception as exc:
+        summary_text = f"Could not generate torchsummary: {exc}"
 
-    # Model file size
     file_size_mb = None
     if checkpoint_path and Path(checkpoint_path).exists():
         file_size_mb = round(Path(checkpoint_path).stat().st_size / (1024 * 1024), 4)
@@ -127,27 +126,41 @@ def analyse_model(
     }
 
     if output_json:
+        if progress_callback is not None:
+            progress_callback(progress=90.0, message="Saving analysis report")
         Path(output_json).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_json, "w") as fp:
-            json.dump(analysis, fp, indent=2)
-        print(f"✅ Analysis saved to {output_json}")
+        with open(output_json, "w") as handle:
+            json.dump(analysis, handle, indent=2)
 
     return analysis
 
 
-def analyse_from_checkpoint(checkpoint_path: str, model_class, input_shape=(1, 28, 28), output_json=None) -> dict:
-    """Load a .pth checkpoint and analyse the model."""
+def analyse_from_checkpoint(
+    checkpoint_path: str,
+    model_class=None,
+    input_shape=None,
+    output_json=None,
+    progress_callback=None,
+) -> dict:
+    if progress_callback is not None:
+        progress_callback(progress=5.0, message="Loading checkpoint from disk")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
-    model = model_class()
-    state_dict = checkpoint.get("model_state_dict", checkpoint)
-    model.load_state_dict(state_dict)
+    if model_class is None:
+        model, _, inferred_input_shape = build_model_from_checkpoint(checkpoint)
+        active_input_shape = tuple(input_shape) if input_shape is not None else inferred_input_shape
+    else:
+        model = model_class()
+        state_dict = checkpoint.get("model_state_dict", checkpoint)
+        model.load_state_dict(state_dict)
+        active_input_shape = tuple(input_shape)
 
     return analyse_model(
         model,
-        input_shape=input_shape,
+        input_shape=active_input_shape,
         checkpoint_path=checkpoint_path,
         output_json=output_json,
+        progress_callback=progress_callback,
     )
 
 
@@ -155,19 +168,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyse a PyTorch model checkpoint")
     parser.add_argument("checkpoint", help="Path to .pth file")
     parser.add_argument("--output", default="results/model_analysis.json", help="Output JSON path")
-    args = parser.parse_args()
+    arguments = parser.parse_args()
 
-    # Import model class from train_mnist
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from backend.ml.train_mnist import SimpleNN
+    result = analyse_from_checkpoint(arguments.checkpoint, model_class=None, input_shape=None, output_json=arguments.output)
 
-    result = analyse_from_checkpoint(args.checkpoint, SimpleNN, output_json=args.output)
-
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Model: {result['model_class']}")
     print(f"Total Parameters: {result['total_params']:,}")
     print(f"Trainable Parameters: {result['trainable_params']:,}")
     print(f"Inference Latency (CPU): {result['inference_latency_ms']} ms")
-    if result['file_size_mb']:
+    if result["file_size_mb"]:
         print(f"Model File Size: {result['file_size_mb']} MB")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")

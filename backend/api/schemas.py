@@ -1,5 +1,6 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 
 
 class TrainRequest(BaseModel):
@@ -8,43 +9,65 @@ class TrainRequest(BaseModel):
     epochs: int = Field(10, ge=1, le=100, description="Number of epochs")
     optimizer: str = Field("adam", pattern="^(adam|sgd)$", description="Optimizer (adam or sgd)")
     experiment_name: str = Field("ai-training-platform", description="MLflow experiment name")
-    run_name: Optional[str] = Field(None, description="Optional MLflow run name")
+    run_name: str | None = Field(None, description="Optional MLflow run name")
+    dataset_name: str | None = Field(None, description="Uploaded dataset filename, or omit for built-in MNIST")
 
 
 class HPORequest(BaseModel):
     n_trials: int = Field(15, ge=3, le=50, description="Number of Optuna trials")
     n_jobs: int = Field(2, ge=1, le=4, description="Parallel Optuna workers")
     experiment_name: str = Field("ai-training-platform", description="MLflow experiment name")
+    dataset_name: str | None = Field(None, description="Uploaded dataset filename, or omit for built-in MNIST")
 
 
 class ExperimentResult(BaseModel):
-    trial: Optional[int] = None
+    trial: int | None = None
     learning_rate: float
     batch_size: int
     epochs: int
-    optimizer: Optional[str] = "adam"
-    best_accuracy: Optional[float] = None
-    val_accuracy: Optional[float] = None
+    optimizer: str | None = "adam"
+    best_accuracy: float | None = None
+    val_accuracy: float | None = None
 
 
 class HPOResult(BaseModel):
     best_trial: int
     best_val_accuracy: float
-    best_params: Dict[str, Any]
-    all_trials: List[Dict[str, Any]]
-    n_jobs: Optional[int] = None
-    execution_mode: Optional[str] = None
+    best_params: dict[str, Any]
+    all_trials: list[dict[str, Any]]
+    n_jobs: int | None = None
+    execution_mode: str | None = None
+    dataset_name: str | None = None
+    dataset_kind: str | None = None
+
+
+class MlflowRun(BaseModel):
+    run_id: str
+    run_name: str | None = None
+    experiment: str
+    status: str
+    start_time: int | None = None
+    params: dict[str, str]
+    metrics: dict[str, float]
+
+
+class MlflowRunsResponse(BaseModel):
+    runs: list[MlflowRun]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
 
 
 class ModelAnalysis(BaseModel):
     model_class: str
-    input_shape: List[int]
+    input_shape: list[int]
     total_params: int
     trainable_params: int
     non_trainable_params: int
     inference_latency_ms: float
-    file_size_mb: Optional[float]
-    layers: List[Dict[str, Any]]
+    file_size_mb: float | None
+    layers: list[dict[str, Any]]
     torchsummary: str
 
 
@@ -67,18 +90,75 @@ class PredictionResponse(BaseModel):
     true_label: int
     confidence: float
     matches_label: bool
-    top_predictions: List[PredictionScore]
-    image_pixels: List[List[float]]
+    top_predictions: list[PredictionScore]
+    image_pixels: list[list[float]]
 
 
 class TrainResponse(BaseModel):
     best_val_accuracy: float
     run_name: str
     checkpoint_path: str
-    history: Dict[str, List[float]]
+    history: dict[str, list[float]]
+    dataset_name: str | None = None
+    dataset_kind: str | None = None
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    kind: str
+    status: str
+    message: str
+    progress: float | None = None
+    created_at: float
+    updated_at: float
+    started_at: float | None = None
+    completed_at: float | None = None
+    error: str | None = None
+    result: dict[str, Any] | None = None
 
 
 class HealthResponse(BaseModel):
     status: str
     mlflow_tracking_uri: str
     device: str
+
+
+class ModelFile(BaseModel):
+    filename: str
+    size_mb: float
+    modified: float
+
+
+class ModelListResponse(BaseModel):
+    models: list[ModelFile]
+
+
+class DatasetPreview(BaseModel):
+    kind: str
+    summary: str
+    columns: list[str] | None = None
+    sample_rows: list[dict[str, Any]] | None = None
+    entries: list[str] | None = None
+    file_count: int | None = None
+
+
+class DatasetFile(BaseModel):
+    filename: str
+    extension: str
+    size_mb: float
+    modified: float
+    preview: DatasetPreview | None = None
+
+
+class DatasetListResponse(BaseModel):
+    datasets: list[DatasetFile]
+
+
+class ModelUploadResponse(BaseModel):
+    message: str
+    model: ModelFile
+
+
+class DatasetUploadResponse(BaseModel):
+    message: str
+    dataset: DatasetFile

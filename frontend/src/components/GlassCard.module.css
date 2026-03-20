@@ -1,0 +1,72 @@
+.glassCard {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: var(--transition-base);
+  box-shadow: var(--shadow-soft);
+}
+
+.glassCard.hoverable {
+  cursor: pointer;
+}
+
+.glassCard.hoverable:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 24px 48px var(--glow-accent);
+}
+
+.glassCard.hoverable:focus-within {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Glow Variants */
+.glow-accent {
+  background: rgba(216, 179, 106, 0.08);
+  border-color: rgba(216, 179, 106, 0.15);
+}
+
+.glow-secondary {
+  background: rgba(169, 100, 79, 0.08);
+  border-color: rgba(169, 100, 79, 0.15);
+}
+
+.glow-success {
+  background: rgba(144, 170, 132, 0.08);
+  border-color: rgba(144, 170, 132, 0.15);
+}
+
+.glow-danger {
+  background: rgba(212, 123, 120, 0.08);
+  border-color: rgba(212, 123, 120, 0.15);
+}
+
+.glow-none {
+  background: rgba(24, 20, 21, 0.4);
+  border-color: rgba(196, 159, 118, 0.12);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .glassCard {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .glassCard,
+  .glassCard.hoverable {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glassCard {
+    border-color: var(--glass-border-hover);
+  }
+}
