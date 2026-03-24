@@ -20,7 +20,7 @@ function FileSize({ mb }: { mb: number }) {
 
 function Latency({ ms }: { ms: number }) {
   return (
-    <span className="mono" style={{ color: ms < 1 ? '#10b981' : ms < 5 ? '#f59e0b' : '#ef4444' }}>
+    <span className="mono" style={{ color: ms < 1 ? 'var(--accent-success)' : ms < 5 ? 'var(--accent-warning)' : 'var(--accent-danger)' }}>
       {ms.toFixed(3)} ms
     </span>
   );
@@ -34,8 +34,8 @@ function DigitPreview({ pixels }: { pixels: number[][] }) {
         gridTemplateColumns: 'repeat(28, 7px)',
         gap: 1,
         padding: 10,
-        background: '#0f1726',
-        border: '1px solid var(--border-primary)',
+        background: 'var(--bg-input)',
+        border: '1px solid var(--border-soft)',
         borderRadius: 12,
         width: 'fit-content',
       }}
@@ -48,7 +48,7 @@ function DigitPreview({ pixels }: { pixels: number[][] }) {
               width: 7,
               height: 7,
               borderRadius: 1,
-              background: `rgba(79, 142, 247, ${Math.max(0.06, Math.min(value, 1))})`,
+              background: `rgba(255, 255, 255, ${Math.max(0.06, Math.min(value, 1))})`,
             }}
           />
         )),
@@ -69,6 +69,11 @@ export const ModelsTab: React.FC = () => {
   const [analysing, setAnalysing] = useState(false);
   const [predicting, setPredicting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // New: Image Upload states
+  const [originalPreview, setOriginalPreview] = useState<string | null>(null);
+  const [uploadBase64, setUploadBase64] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     listModels()
@@ -81,6 +86,8 @@ export const ModelsTab: React.FC = () => {
     setOnnxResult(null);
     setAnalysis(null);
     setPrediction(null);
+    setOriginalPreview(null);
+    setUploadBase64(null);
   };
 
   const handleExport = async () => {
@@ -119,17 +126,38 @@ export const ModelsTab: React.FC = () => {
     setPrediction(null);
     setError(null);
     try {
-      const response = await predictModel(selected, {
-        sample_index: sampleIndex,
-        split: 'test',
+      const payload: any = {
         top_k: 3,
-      });
+      };
+
+      if (uploadBase64) {
+        payload.image_base64 = uploadBase64;
+      } else {
+        payload.sample_index = sampleIndex;
+        payload.split = 'test';
+      }
+
+      const response = await predictModel(selected, payload);
       setPrediction(response);
     } catch (error: unknown) {
       setError(getApiErrorMessage(error));
     } finally {
       setPredicting(false);
     }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setUploadBase64(base64);
+      setOriginalPreview(URL.createObjectURL(file));
+      setPrediction(null); // Clear previous prediction
+    };
+    reader.readAsDataURL(file);
   };
 
   const selectModel = (filename: string) => {
@@ -180,7 +208,7 @@ export const ModelsTab: React.FC = () => {
                     onClick={() => selectModel(model.filename)}
                     style={{
                       cursor: 'pointer',
-                      background: selected === model.filename ? 'rgba(79, 142, 247, 0.08)' : undefined,
+                      background: selected === model.filename ? 'var(--bg-soft)' : undefined,
                     }}
                   >
                     <td>
@@ -189,8 +217,8 @@ export const ModelsTab: React.FC = () => {
                           width: 16,
                           height: 16,
                           borderRadius: '50%',
-                          border: `2px solid ${selected === model.filename ? '#4f8ef7' : '#2a3d62'}`,
-                          background: selected === model.filename ? '#4f8ef7' : 'transparent',
+                          border: `2px solid ${selected === model.filename ? 'var(--accent-primary)' : 'var(--border-medium)'}`,
+                          background: selected === model.filename ? 'var(--accent-primary)' : 'transparent',
                           margin: '0 auto',
                         }}
                       />
@@ -215,32 +243,63 @@ export const ModelsTab: React.FC = () => {
               padding: '16px 24px',
               borderTop: '1px solid var(--border-primary)',
               display: 'flex',
-              gap: 12,
+              gap: 16,
               flexWrap: 'wrap',
               alignItems: 'end',
             }}
           >
-            <div className="form-group" style={{ marginBottom: 0, minWidth: 180 }}>
-              <label className="form-label">MNIST sample index</label>
-              <input
-                type="number"
-                min={0}
-                className="form-input"
-                value={sampleIndex}
-                onChange={event => setSampleIndex(Math.max(0, event.target.valueAsNumber || 0))}
+            {/* Inference cluster */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+              <div className="form-group" style={{ marginBottom: 0, minWidth: 120 }}>
+                <label className="form-label">Sample index</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="form-input"
+                  value={sampleIndex}
+                  onChange={event => {
+                    setSampleIndex(Math.max(0, event.target.valueAsNumber || 0));
+                    setUploadBase64(null);
+                    setOriginalPreview(null);
+                  }}
+                  disabled={predicting}
+                />
+              </div>
+              <button 
+                className={`btn btn-sm ${uploadBase64 ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={handlePredict} 
                 disabled={predicting}
+              >
+                {predicting ? 'Running...' : uploadBase64 ? 'Predict Upload' : 'Run Sample'}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*"
+                onChange={handleFileChange}
               />
-              <p className="form-hint">Runs inference on the test split</p>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={predicting}
+              >
+                Upload Digit
+              </button>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={handlePredict} disabled={predicting}>
-              {predicting ? 'Running prediction...' : 'Run Sample Prediction'}
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={handleAnalyse} disabled={analysing}>
-              {analysing ? 'Analysing...' : 'Analyse Architecture'}
-            </button>
-            <button className="btn btn-outline-green btn-sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? 'Exporting...' : 'Export to ONNX'}
-            </button>
+
+            {/* Divider */}
+            <div style={{ width: '1px', height: '32px', background: 'var(--border-soft)', alignSelf: 'center' }} />
+
+            {/* Analysis cluster */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-dark btn-sm" onClick={handleAnalyse} disabled={analysing}>
+                {analysing ? 'Analysing...' : 'Analyse'}
+              </button>
+              <button className="btn btn-outline-green btn-sm" onClick={handleExport} disabled={exporting}>
+                {exporting ? 'Exporting...' : 'Export ONNX'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -254,11 +313,37 @@ export const ModelsTab: React.FC = () => {
             </span>
           </div>
           <div className="card-body">
-            <div className="comparison-row">
+            <div className="comparison-row" style={{ gap: 40 }}>
               <div className="comparison-col" style={{ alignItems: 'center' }}>
-                <DigitPreview pixels={prediction.image_pixels} />
-                <div className="metric-sub" style={{ marginTop: 12 }}>
-                  Sample #{prediction.sample_index} from the {prediction.split} split
+                <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+                   {originalPreview && (
+                     <div style={{ textAlign: 'center' }}>
+                       <div className="metric-label" style={{ marginBottom: 8 }}>Original</div>
+                       <img 
+                         src={originalPreview} 
+                         alt="Original" 
+                         style={{ 
+                           width: 100, 
+                           height: 100, 
+                           objectFit: 'contain',
+                           background: '#000',
+                           borderRadius: 8,
+                           border: '1px solid var(--border-soft)'
+                         }} 
+                       />
+                     </div>
+                   )}
+                   <div style={{ textAlign: 'center' }}>
+                     <div className="metric-label" style={{ marginBottom: 8 }}>
+                       {prediction.sample_index !== null ? 'Dataset' : 'Processed (28x28)'}
+                     </div>
+                     <DigitPreview pixels={prediction.image_pixels} />
+                   </div>
+                </div>
+                <div className="metric-sub" style={{ marginTop: 16 }}>
+                  {prediction.sample_index !== null 
+                    ? `Sample #${prediction.sample_index} from the ${prediction.split} split`
+                    : 'Custom upload processed for MNIST compatibility'}
                 </div>
               </div>
               <div className="comparison-col">
@@ -419,6 +504,50 @@ export const ModelsTab: React.FC = () => {
                   <div className="metric-sub">{onnxResult.comparison.latency_speedup_x}x speedup</div>
                 </div>
               </div>
+
+              {onnxResult.quantised && onnxResult.comparison.int8_size_reduction_pct !== undefined && onnxResult.comparison.int8_latency_speedup_x !== undefined && (
+                <div className="comparison-col quantised" style={{ border: '1px solid rgba(29, 158, 117, 0.3)', background: 'rgba(29, 158, 117, 0.05)' }}>
+                  <div className="comparison-col-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div style={{
+                      fontSize: '9px',
+                      letterSpacing: '0.15em',
+                      color: '#1D9E75',
+                      textTransform: 'uppercase',
+                      marginBottom: '4px',
+                    }}>
+                      RECOMMENDED
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#FFFFFF' }}>
+                      INT8 Quantised
+                    </div>
+                  </div>
+                  <div className="metric-item" style={{ marginBottom: 10 }}>
+                    <div className="metric-label">File Size</div>
+                    <div className="metric-value"><FileSize mb={onnxResult.quantised.file_size_mb} /></div>
+                    <div className="metric-sub">
+                      <span style={{
+                        color: onnxResult.comparison.int8_size_reduction_pct > 20 ? '#1D9E75' : 'rgba(255,255,255,0.4)',
+                        fontSize: '11px',
+                        letterSpacing: '0.08em',
+                      }}>
+                        -{onnxResult.comparison.int8_size_reduction_pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="metric-item">
+                    <div className="metric-label">CPU Latency</div>
+                    <div className="metric-value"><Latency ms={onnxResult.quantised.inference_latency_ms} /></div>
+                    <div className="metric-sub">
+                      <span style={{
+                        color: onnxResult.comparison.int8_latency_speedup_x > 1.2 ? '#1D9E75' : 'rgba(255,255,255,0.4)',
+                        fontSize: '11px',
+                      }}>
+                        {onnxResult.comparison.int8_latency_speedup_x.toFixed(2)}x faster
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="alert alert-info" style={{ marginTop: 16 }}>

@@ -1,0 +1,53 @@
+[36mvite v8.0.1 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 3322 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                               1.80 kB │ gzip:   0.82 kB
+dist/assets/index-DuOlv8LO.css               11.19 kB │ gzip:   3.19 kB
+dist/assets/rolldown-runtime-COnpUsM8.js      0.81 kB │ gzip:   0.46 kB
+dist/assets/SearchRadar-DGKT-6eH.js           1.95 kB │ gzip:   0.88 kB
+dist/assets/ExperimentFlask-BSh1agj4.js       2.28 kB │ gzip:   1.08 kB
+dist/assets/GPUCluster-H59S_Rct.js            2.35 kB │ gzip:   1.12 kB
+dist/assets/NeuralHub-BMibIhzf.js             2.35 kB │ gzip:   1.17 kB
+dist/assets/AssetHologram-CeVlyGEk.js         3.36 kB │ gzip:   1.53 kB
+dist/assets/TrainTab-BTIcDEIF.js              6.23 kB │ gzip:   1.77 kB
+dist/assets/HPOTab-CLB6gAFu.js                6.49 kB │ gzip:   2.18 kB
+dist/assets/ExperimentsTab-DplfjWYc.js        7.19 kB │ gzip:   1.85 kB
+dist/assets/ModelsTab-D4-XREeU.js            11.52 kB │ gzip:   2.80 kB
+dist/assets/index-BnQD0txv.js                19.03 kB │ gzip:   6.68 kB
+dist/assets/http-vendor-DnOo4J5W.js          36.26 kB │ gzip:  14.39 kB
+dist/assets/vendor-Opss0yBB.js              257.67 kB │ gzip:  90.35 kB
+dist/assets/charts-vendor-ApBzEuyA.js       369.71 kB │ gzip: 107.70 kB
+dist/assets/react-vendor-ATALd82t.js      1,284.69 kB │ gzip: 396.53 kB
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[31m✗[39m Build failed in 1.57s
+[31merror during build:
+[31mBuild failed with 1 error:
+
+Error: [vite]: Rolldown failed to resolve import "react-is" from "C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/recharts/es6/util/ReactUtils.js".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteLog (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32910:57)
+    at file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32946:71
+    at onwarn (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/@vitejs/plugin-react/dist/index.js:40:7)
+    at file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32946:28
+    at onRollupLog (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32941:63)
+    at onLog (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32711:4)
+    at file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/rolldown-build-yQC7KN8K.mjs:49:26
+    at logger (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/rolldown-build-yQC7KN8K.mjs:40:3)
+    at onLog (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/bindingify-input-options-DoaqRULI.mjs:1950:32)[31m
+    at aggregateBindingErrorsIntoJsError (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/error-BO4SlZV_.mjs:48:18)
+    at unwrapBindingResult (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/error-BO4SlZV_.mjs:18:128)
+    at #build (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/rolldown/dist/shared/rolldown-build-yQC7KN8K.mjs:3311:34)
+    at async buildEnvironment (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:32817:64)
+    at async Object.build (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:33239:19)
+    at async Object.buildApp (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/chunks/node.js:33236:153)
+    at async CAC.<anonymous> (file:///C:/Users/Ojas/Desktop/ai-training-platform/frontend/node_modules/vite/dist/node/cli.js:778:3) {
+  errors: [Getter/Setter]
+}[39m

@@ -1,9 +1,11 @@
 // src/components/HPOTab.tsx
 import React, { useState } from 'react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { MetricCard } from './MetricCard';
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ZAxis
-} from 'recharts';
+  Settings, Rocket, Hourglass, XCircle,
+  Trophy, BarChart2, Search
+} from 'lucide-react';
 import { getApiErrorMessage, runHpo } from '../api';
 import type { HpoResult } from '../types';
 
@@ -54,7 +56,7 @@ export const HPOTab: React.FC = () => {
         {/* Control Panel */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">⚙️ Search Configuration</span>
+            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Settings size={16} /> Search Configuration</span>
           </div>
           <div className="card-body">
             <div className="alert alert-info">
@@ -99,12 +101,12 @@ export const HPOTab: React.FC = () => {
             >
               {loading ? (
                 <><div className="spinner" /> Running {nTrials} trials…</>
-              ) : '🚀 Run HPO Search'}
+              ) : <><Rocket size={18} /> Run HPO Search</>}
             </button>
 
             {loading && (
-              <div className="alert alert-warning" style={{ marginTop: 14 }}>
-                ⏳ This runs up to {effectiveWorkers} training trial{effectiveWorkers === 1 ? '' : 's'} at the same time. Each trial still logs to MLflow automatically.
+              <div className="alert alert-warning" style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Hourglass size={16} /> This runs up to {effectiveWorkers} training trial{effectiveWorkers === 1 ? '' : 's'} at the same time. Each trial still logs to MLflow automatically.
               </div>
             )}
           </div>
@@ -112,18 +114,21 @@ export const HPOTab: React.FC = () => {
 
         {/* Results */}
         <div>
-          {error && <div className="alert alert-error">❌ {error}</div>}
+          {error && <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><XCircle size={16} /> {error}</div>}
 
           {result && (
             <>
-              <div className="alert alert-success">
-                ✅ HPO complete in {elapsedMs ? (elapsedMs / 1000).toFixed(1) : '—'}s with {result.n_jobs ?? effectiveWorkers} worker{(result.n_jobs ?? effectiveWorkers) === 1 ? '' : 's'} — Best val accuracy: <strong>{result.best_val_accuracy.toFixed(2)}%</strong> (Trial #{result.best_trial})
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                <MetricCard title="Best Accuracy" value={`${result.best_val_accuracy.toFixed(1)}%`} valueColor="#1D9E75" />
+                <MetricCard title="Best Trial" value={`#${result.best_trial}`} valueColor="#A061D1" />
+                <MetricCard title="Wall Time" value={`${elapsedMs ? (elapsedMs / 1000).toFixed(0) : '—'}s`} valueColor="#F59E0B" />
+                <MetricCard title="Workers" value={result.n_jobs ?? effectiveWorkers} valueColor="#FFFFFF" />
               </div>
 
               {/* Best params */}
               <div className="card section-gap">
                 <div className="card-header">
-                  <span className="card-title">🏆 Best Trial Parameters</span>
+                  <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Trophy size={16} /> Best Trial Parameters</span>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {result.execution_mode && (
                       <span className={`badge ${result.execution_mode === 'parallel' ? 'badge-blue' : 'badge-amber'}`}>
@@ -157,24 +162,28 @@ export const HPOTab: React.FC = () => {
               {scatterData.length > 2 && (
                 <div className="card section-gap">
                   <div className="card-header">
-                    <span className="card-title">📊 log₁₀(LR) vs Val Accuracy</span>
+                    <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={16} /> log₁₀(LR) vs Val Accuracy</span>
                     <span className="badge badge-blue">Bubble size = batch size</span>
                   </div>
                   <div className="card-body">
                     <ResponsiveContainer width="100%" height={280}>
                       <ScatterChart>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e2d4a" />
-                        <XAxis dataKey="lr" name="log₁₀(LR)" type="number" tick={{ fill: '#8b9ab8', fontSize: 12 }}
-                          label={{ value: 'log₁₀(LR)', position: 'insideBottom', offset: -4, fill: '#8b9ab8', fontSize: 12 }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                        <XAxis dataKey="lr" name="log₁₀(LR)" type="number" tick={{ fill: 'var(--chart-axis)', fontSize: 12 }}
+                          label={{ value: 'log₁₀(LR)', position: 'insideBottom', offset: -4, fill: 'var(--chart-axis)', fontSize: 12 }} />
                         <YAxis dataKey="accuracy" name="Val Acc" type="number" domain={[0, 100]}
-                          tick={{ fill: '#8b9ab8', fontSize: 12 }}
-                          label={{ value: 'Val Accuracy %', angle: -90, position: 'insideLeft', fill: '#8b9ab8', fontSize: 12 }} />
+                          tick={{ fill: 'var(--chart-axis)', fontSize: 12 }}
+                          label={{ value: 'Val Accuracy %', angle: -90, position: 'insideLeft', fill: 'var(--chart-axis)', fontSize: 12 }} />
                         <ZAxis dataKey="z" range={[40, 200]} />
                         <Tooltip
-                          contentStyle={{ background: '#141c2e', border: '1px solid #2a3d62', borderRadius: 8 }}
+                          contentStyle={{ 
+                            background: 'var(--chart-tooltip-bg)', 
+                            border: '1px solid var(--chart-tooltip-border)', 
+                            borderRadius: 8 
+                          }}
                           cursor={{ strokeDasharray: '3 3' }}
                         />
-                        <Scatter data={scatterData} fill="#4f8ef7" fillOpacity={0.75} />
+                        <Scatter data={scatterData} fill="var(--accent-primary)" fillOpacity={0.75} />
                       </ScatterChart>
                     </ResponsiveContainer>
                   </div>
@@ -185,7 +194,7 @@ export const HPOTab: React.FC = () => {
 
           {!result && !loading && (
             <div className="empty-state" style={{ paddingTop: 40 }}>
-              <div className="empty-state-icon">🔍</div>
+              <div className="empty-state-icon"><Search size={48} opacity={0.5} /></div>
               <div className="empty-state-title">No results yet</div>
               <div className="empty-state-text">Configure and launch a search to see results here</div>
             </div>

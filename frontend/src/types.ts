@@ -68,15 +68,16 @@ export interface PredictionScore {
 }
 
 export interface PredictionRequest {
-  sample_index: number;
-  split: 'train' | 'test';
+  sample_index?: number;
+  split?: 'train' | 'test';
   top_k: number;
+  image_base64?: string;
 }
 
 export interface PredictionResponse {
   checkpoint_filename: string;
-  sample_index: number;
-  split: 'train' | 'test';
+  sample_index: number | null;
+  split: 'train' | 'test' | null;
   predicted_label: number;
   true_label: number;
   confidence: number;

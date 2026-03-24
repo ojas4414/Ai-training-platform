@@ -1,130 +1,94 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
-import { healthCheck } from './api';
+import { useState, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { CinematicExperience } from './components/CinematicExperience'
+import { Dashboard } from './components/Dashboard'
+import { CinematicScene } from './components/CinematicScene'
+import { ScrollIndicator } from './components/ScrollIndicator'
 
-type Tab = 'experiments' | 'train' | 'hpo' | 'models';
+type Tab = 'experiments' | 'train' | 'hpo' | 'models'
+type View = 'cinematic' | 'dashboard'
 
-type TabConfig = {
-  id: Tab;
-  label: string;
-  badge: string;
-};
-
-const tabLoaders = {
-  experiments: () => import('./components/ExperimentsTab').then(module => ({ default: module.ExperimentsTab })),
-  train: () => import('./components/TrainTab').then(module => ({ default: module.TrainTab })),
-  hpo: () => import('./components/HPOTab').then(module => ({ default: module.HPOTab })),
-  models: () => import('./components/ModelsTab').then(module => ({ default: module.ModelsTab })),
-} satisfies Record<Tab, () => Promise<{ default: React.ComponentType }>>;
-
-const tabComponents = {
-  experiments: lazy(tabLoaders.experiments),
-  train: lazy(tabLoaders.train),
-  hpo: lazy(tabLoaders.hpo),
-  models: lazy(tabLoaders.models),
-} satisfies Record<Tab, React.LazyExoticComponent<React.ComponentType>>;
-
-const TABS: TabConfig[] = [
-  { id: 'experiments', label: 'Experiments', badge: 'EXP' },
-  { id: 'train', label: 'Train', badge: 'TRN' },
-  { id: 'hpo', label: 'HPO Search', badge: 'HPO' },
-  { id: 'models', label: 'Model Lab', badge: 'LAB' },
-];
-
-function TabFallback() {
-  return (
-    <div className="tab-loading-shell">
-      <div className="spinner" />
-      <div className="tab-loading-title">Loading dashboard module...</div>
-      <div className="tab-loading-text">The tab code is being loaded on demand to keep the initial bundle smaller.</div>
-    </div>
-  );
+const CHAPTER_TAB_MAP: Record<string, Tab> = {
+  'CH 01': 'experiments',
+  'CH 02': 'train',
+  'CH 03': 'hpo',
+  'CH 04': 'models',
+  'experiments': 'experiments',
+  'train': 'train',
+  'hpo': 'hpo',
+  'models': 'models'
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('experiments');
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [view, setView] = useState<View>('cinematic')
+  const [activeTab, setActiveTab] = useState<Tab>('experiments')
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null)
+  const contentLayerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    healthCheck()
-      .then(() => setBackendOnline(true))
-      .catch(() => setBackendOnline(false));
-  }, []);
+  const switchView = (newView: View, tab?: Tab) => {
+    setIsTransitioning(true)
+    setTimeout(() => {
+      if (tab) setActiveTab(tab)
+      setView(newView)
+      setIsTransitioning(false)
+    }, 200)
+  }
 
-  useEffect(() => {
-    void tabLoaders[activeTab]();
-  }, [activeTab]);
+  const enterWorkspace = (chapterId: string) => {
+    // chapterId comes from onEnterWorkspace(ch.id) in CinematicExperience
+    const tab = CHAPTER_TAB_MAP[chapterId] ?? 'experiments'
+    switchView('dashboard', tab)
+  }
 
-  const ActiveTabComponent = tabComponents[activeTab];
+  const returnToHub = () => switchView('cinematic')
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-inner">
-          <div className="header-logo">
-            <div className="logo-icon">AI</div>
-            <span className="logo-text">AI Training Platform</span>
-            <span className="logo-badge">v1.0</span>
-          </div>
+    <div style={{ background: '#050505', minHeight: '100vh', position: 'relative' }}>
+      {/* PERSISTENT 3D BACKGROUND */}
+      <div style={{ 
+        position: 'fixed', inset: 0, zIndex: 0,
+        opacity: view === 'dashboard' ? 0.4 : 1,
+        transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+        pointerEvents: 'none'
+      }}>
+        <Canvas 
+          id="three-canvas" 
+          gl={{ antialias: true, powerPreference: 'high-performance' }}
+          dpr={window.devicePixelRatio > 2 ? 2 : window.devicePixelRatio}
+        >
+          <CinematicScene 
+            scrollContainer={contentLayerRef} 
+            isDashboardMode={view === 'dashboard'} 
+            activeTab={activeTab}
+          />
+        </Canvas>
+      </div>
 
-          <nav className="header-nav">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-                onMouseEnter={() => {
-                  void tabLoaders[tab.id]();
-                }}
-                id={`nav-${tab.id}`}
-              >
-                <span className="nav-tab-badge">{tab.badge}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* UI LAYERS */}
+      <div style={{ 
+        position: 'relative', zIndex: 1,
+        opacity: isTransitioning ? 0 : 1,
+        transition: 'opacity 0.4s ease',
+      }}>
+        {view === 'cinematic' ? (
+          <CinematicExperience 
+            onEnterWorkspace={enterWorkspace} 
+            contentLayerRef={contentLayerRef}
+          />
+        ) : (
+          <Dashboard 
+            activeTab={activeTab} 
+            onBackToHub={returnToHub} 
+            backendOnline={backendOnline}
+            setBackendOnline={setBackendOnline} 
+          />
+        )}
+      </div>
 
-          <div className="header-status">
-            {backendOnline === null && <span>Connecting...</span>}
-            {backendOnline === true && (
-              <>
-                <div className="status-dot" />
-                API Online
-              </>
-            )}
-            {backendOnline === false && (
-              <span style={{ color: '#ef4444', fontSize: 12 }}>
-                Backend offline. Start uvicorn.
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {backendOnline === false && (
-        <div className="alert alert-error" style={{ borderRadius: 0, margin: 0 }}>
-          Backend is not reachable at {import.meta.env.VITE_API_URL || 'http://localhost:8000'}.
-          Run:{' '}
-          <code
-            style={{
-              fontFamily: 'monospace',
-              background: 'rgba(0,0,0,0.2)',
-              padding: '0 6px',
-              borderRadius: 4,
-            }}
-          >
-            python -m uvicorn backend.api.main:app --reload
-          </code>{' '}
-          in the project root.
-        </div>
-      )}
-
-      <main className="main-content">
-        <Suspense fallback={<TabFallback />}>
-          <ActiveTabComponent />
-        </Suspense>
-      </main>
+      <ScrollIndicator />
     </div>
-  );
+  )
 }
 
 export default App;

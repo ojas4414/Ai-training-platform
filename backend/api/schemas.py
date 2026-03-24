@@ -49,8 +49,9 @@ class ModelAnalysis(BaseModel):
 
 
 class PredictionRequest(BaseModel):
-    sample_index: int = Field(0, ge=0, description="MNIST sample index to run inference on")
-    split: str = Field("test", pattern="^(train|test)$", description="Dataset split to sample from")
+    sample_index: Optional[int] = Field(None, ge=0, description="MNIST sample index to run inference on")
+    split: Optional[str] = Field("test", pattern="^(train|test)$", description="Dataset split to sample from")
+    image_base64: Optional[str] = Field(None, description="Base64 encoded image data for inference")
     top_k: int = Field(3, ge=1, le=10, description="How many class probabilities to return")
 
 
@@ -61,10 +62,10 @@ class PredictionScore(BaseModel):
 
 class PredictionResponse(BaseModel):
     checkpoint_filename: str
-    sample_index: int
-    split: str
+    sample_index: Optional[int] = None
+    split: Optional[str] = None
     predicted_label: int
-    true_label: int
+    true_label: Optional[int] = -1
     confidence: float
     matches_label: bool
     top_predictions: List[PredictionScore]

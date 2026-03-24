@@ -3,8 +3,14 @@ import React, { useEffect, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { 
+  AlertTriangle, Trophy, ClipboardList, 
+  Microscope, Target, TrendingUp 
+} from 'lucide-react';
 import { getExperiments, getMlflowRuns } from '../api';
 import type { ExperimentsResponse, MlflowRun } from '../types';
+import { AnimatedNumber } from './AnimatedNumber';
+import { MetricCard } from './MetricCard';
 
 
 
@@ -37,23 +43,21 @@ export const ExperimentsTab: React.FC = () => {
   }, []);
 
   if (loading) return <div className="empty-state"><div className="spinner" style={{ margin: '0 auto' }} /></div>;
-  if (error) return <div className="alert alert-error">⚠️ {error} — Is the backend running?</div>;
+  if (error) return <div className="alert alert-error"><AlertTriangle size={16} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> {error} — Is the backend running?</div>;
 
   const manual = data?.manual_experiments ?? [];
   const hpo = data?.hpo_results;
 
+  const totalRuns = manual.length + (hpo?.all_trials.length || 0);
+  const bestManual = manual.length > 0 ? Math.max(...manual.map(m => m.best_accuracy)) : 0;
+  const bestHpo = hpo ? hpo.best_val_accuracy : 0;
+  const bestAccuracy = Math.max(bestManual, bestHpo);
+
   // Build chart data from MLflow runs
   const chartRuns = mlflowRuns.slice(0, 6);
 
-  // Stats
-  const bestAccuracy = Math.max(
-    ...manual.map(e => e.best_accuracy),
-    ...(hpo ? [hpo.best_val_accuracy] : [])
-  );
-  const totalRuns = manual.length + (hpo?.all_trials.length ?? 0);
-
   return (
-    <div className="tab-content">
+    <div className="tab-content tab-content-active">
       <div className="page-header">
         <div>
           <h1 className="page-title">Experiment Dashboard</h1>
@@ -61,40 +65,24 @@ export const ExperimentsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card blue">
-          <div className="stat-icon">🧪</div>
-          <div className="stat-value">{totalRuns}</div>
-          <div className="stat-label">Total Runs</div>
-        </div>
-        <div className="stat-card green">
-          <div className="stat-icon">🏆</div>
-          <div className="stat-value">{bestAccuracy > 0 ? bestAccuracy.toFixed(1) : '—'}%</div>
-          <div className="stat-label">Best Accuracy</div>
-        </div>
-        <div className="stat-card purple">
-          <div className="stat-icon">⚡</div>
-          <div className="stat-value">{mlflowRuns.length}</div>
-          <div className="stat-label">MLflow Runs</div>
-        </div>
-        <div className="stat-card amber">
-          <div className="stat-icon">🔍</div>
-          <div className="stat-value">{hpo?.all_trials.length ?? 0}</div>
-          <div className="stat-label">HPO Trials</div>
-        </div>
+      {/* Stats - Giant Numbers Treatment */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '60px' }}>
+        <MetricCard title="Total Runs" value={<AnimatedNumber value={totalRuns} />} valueColor="#FFFFFF" />
+        <MetricCard title="Best Accuracy" value={<>{bestAccuracy > 0 ? bestAccuracy.toFixed(1) : '—'}%</>} valueColor="#1D9E75" />
+        <MetricCard title="MLflow Runs" value={<AnimatedNumber value={mlflowRuns.length} />} valueColor="#A061D1" />
+        <MetricCard title="HPO Trials" value={<AnimatedNumber value={hpo?.all_trials.length ?? 0} />} valueColor="#F59E0B" />
       </div>
 
       {/* Manual experiments table */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">📋 Manual Experiments</span>
+          <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={16} /> Manual Experiments</span>
           <span className="badge badge-blue">{manual.length} runs</span>
         </div>
         <div className="table-wrapper">
           {manual.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🔬</div>
+              <div className="empty-state-icon"><Microscope size={48} opacity={0.5} /></div>
               <div className="empty-state-title">No manual experiments yet</div>
               <div className="empty-state-text">Run scripts/run_experiments.py or use the Train tab</div>
             </div>
@@ -131,7 +119,7 @@ export const ExperimentsTab: React.FC = () => {
       {hpo && (
         <div className="card section-gap">
           <div className="card-header">
-            <span className="card-title">🎯 HPO Trials (Optuna)</span>
+            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Target size={16} /> HPO Trials (Optuna)</span>
             <span className="badge badge-green">Best: {hpo.best_val_accuracy.toFixed(2)}%</span>
           </div>
           <div className="table-wrapper">
@@ -153,7 +141,7 @@ export const ExperimentsTab: React.FC = () => {
                   <tr key={i}>
                     <td>
                       {t.trial === hpo.best_trial
-                        ? <span className="badge badge-green">🏆 #{t.trial}</span>
+                        ? <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Trophy size={12} /> #{t.trial}</span>
                         : <span className="badge badge-blue">#{t.trial}</span>}
                     </td>
                     <td><span className="mono">{Number(t.learning_rate).toExponential(2)}</span></td>
@@ -175,7 +163,7 @@ export const ExperimentsTab: React.FC = () => {
       {chartRuns.length > 0 && (
         <div className="card section-gap">
           <div className="card-header">
-            <span className="card-title">📈 Best Val Accuracy — MLflow Runs</span>
+            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} /> Best Val Accuracy — MLflow Runs</span>
           </div>
           <div className="card-body">
             <ResponsiveContainer width="100%" height={300}>
@@ -183,14 +171,18 @@ export const ExperimentsTab: React.FC = () => {
                 name: r.run_name || `Run ${i + 1}`,
                 accuracy: r.metrics['best_val_accuracy'] ?? 0,
               }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2d4a" />
-                <XAxis dataKey="name" tick={{ fill: '#8b9ab8', fontSize: 12 }} />
-                <YAxis domain={[0, 100]} tick={{ fill: '#8b9ab8', fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis dataKey="name" tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+                <YAxis domain={[0, 100]} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{ background: '#141c2e', border: '1px solid #2a3d62', borderRadius: 8 }}
-                  labelStyle={{ color: '#e8edf5' }}
+                  contentStyle={{ 
+                    background: 'var(--chart-tooltip-bg)', 
+                    border: '1px solid var(--chart-tooltip-border)', 
+                    borderRadius: 8 
+                  }}
+                  labelStyle={{ color: 'var(--text-primary)' }}
                 />
-                <Line type="monotone" dataKey="accuracy" stroke="#4f8ef7" strokeWidth={2} dot={{ fill: '#4f8ef7' }} name="Val Accuracy %" />
+                <Line type="monotone" dataKey="accuracy" stroke="var(--accent-primary)" strokeWidth={2} dot={{ fill: 'var(--accent-primary)' }} name="Val Accuracy %" />
               </LineChart>
             </ResponsiveContainer>
           </div>
