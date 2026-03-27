@@ -15,6 +15,7 @@ mlruns/
 # Data & models (large binaries)
 data/
 models/*.pth
+models/*.glb
 models/onnx/
 models/quantised/
 
@@ -32,10 +33,29 @@ frontend/.env
 .DS_Store
 Thumbs.db
 
-# Temp
+# Logs & temp
 *.log
 *.tmp
+
+# Results (generated outputs)
 results/*.json
+
+# Debug / scratch files
+debug_*.py
+inspect_*.json
+inspect_*.txt
+test_digit_*.png
+
+# Build & error dumps
+build_error*.txt
+build_errors*.txt
+cmdlog.txt
+dist_log.txt
+ts_errors.txt
+out.log
+clean_error.txt
+capture.mjs
+run_build.mjs
 
 # Tests
 .pytest_cache/
